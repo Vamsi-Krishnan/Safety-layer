@@ -5,8 +5,9 @@ This module provides profanity filtering functionality for multilingual text.
 Can be imported and used as a module in other Python projects.
 
 Filtering Strategy:
-- Highly abusive/explicit words: MASKED with asterisks (***)
-- Racial slurs and derogatory terms: REPLACED with appropriate synonyms
+- All profane words are REPLACED with appropriate synonyms when available
+- Words without synonyms are MASKED with asterisks (***)
+- Optional pure masking mode via use_synonyms=False parameter
 
 Usage as a module:
     from safety_filter import SafetyFilter
@@ -14,8 +15,11 @@ Usage as a module:
     # Initialize
     filter = SafetyFilter(language='hi')
     
-    # Filter text
+    # Filter text (replaces with synonyms)
     clean_text = filter.filter("text with profanity")
+    
+    # Filter text (pure masking)
+    clean_text = filter.filter("text with profanity", use_synonyms=False)
 
 Usage from command line:
     python safety_filter.py input.txt output.txt
@@ -53,20 +57,15 @@ class SafetyFilter:
     
     This class provides text filtering functionality with automatic language detection
     and context-aware filtering:
-    - Highly abusive/explicit words are MASKED (***)
-    - Racial slurs and derogatory terms are REPLACED with appropriate synonyms
+    - By default, replaces profane words with appropriate synonyms
+    - Falls back to masking (***) if no synonym is available
+    - Optional pure masking mode
     
     Attributes:
         language (str): Target language code ('en', 'hi', 'ta', 'te')
-        highly_abusive (dict): Words to be masked per language
-        racial_slurs (dict): Words to be replaced per language
-        synonyms (dict): Appropriate replacements for racial slurs
-    
-    Example:
-        >>> filter = SafetyFilter(language='en')
-        >>> result = filter.filter("This is stupid you bastard")
-        >>> print(result)
-        'This is unwise you ****'
+        highly_abusive (dict): Highly offensive words per language
+        racial_slurs (dict): Derogatory terms per language
+        synonyms (dict): Appropriate replacements
     """
     
     SUPPORTED_LANGUAGES = ['en', 'hi', 'ta', 'te']
@@ -107,18 +106,18 @@ class SafetyFilter:
     
     def _load_highly_abusive_words(self) -> Dict[str, List[str]]:
         """
-        Load highly abusive/explicit words that should be MASKED.
+        Load highly abusive/explicit words.
         These are extreme profanity, sexual explicit terms, etc.
         """
         return {
             "en": [
-                # Extreme profanity (to be masked)
+                # Extreme profanity
                 "fuck", "fucking", "shit", "bitch", "asshole", "bastard",
                 "dickhead", "prick", "cock", "pussy", "crap", "damn", "hell",
                 "ass", "dumbass"
             ],
             "hi": [
-                # Highly abusive Hindi words (to be masked)
+                # Highly abusive Hindi words
                 "चूतिया", "chutiya", "मादरचोद", "madarchod",
                 "बहनचोद", "behenchod", "भोसडीके", "bhosadike",
                 "लौडा", "lauda", "लंड", "lund", "गांडू", "gandu",
@@ -126,13 +125,13 @@ class SafetyFilter:
                 "चुतियापा", "chutiyapa", "बकचोद", "bakchod"
             ],
             "ta": [
-                # Highly abusive Tamil words (to be masked)
+                # Highly abusive Tamil words
                 "புண்டா", "punda", "ஓத்தா", "otha",
                 "ஓம்பு", "ombu", "தேவடியா", "thevidiya",
                 "குத்தி", "koothi", "பூல்", "pul"
             ],
             "te": [
-                # Highly abusive Telugu words (to be masked)
+                # Highly abusive Telugu words
                 "పూకు", "pooku", "లండ", "land",
                 "బోడు", "bodu", "కూతురు", "kothuru",
                 "పూరి", "poori", "lanjakoduku"
@@ -141,18 +140,18 @@ class SafetyFilter:
     
     def _load_racial_slurs(self) -> Dict[str, List[str]]:
         """
-        Load racial slurs and derogatory terms that should be REPLACED with synonyms.
+        Load racial slurs and derogatory terms.
         These include identity-based insults, mild profanity, etc.
         """
         return {
             "en": [
-                # Racial/derogatory slurs (to be replaced)
+                # Racial/derogatory slurs
                 "stupid", "idiot", "fool", "dumb", "moron",
                 "retard", "retarded", "imbecile", "jerk", "loser",
                 "scum", "trash", "garbage", "worthless", "pathetic"
             ],
             "hi": [
-                # Derogatory Hindi terms (to be replaced)
+                # Derogatory Hindi terms
                 "बेवकूफ़", "बेवकूफ", "bewakoof", "bewakuf",
                 "मूर्ख", "गधा", "gadha", "उल्लू", "ullu",
                 "हरामी", "harami", "हरामज़ादा", "haramzada",
@@ -162,14 +161,14 @@ class SafetyFilter:
                 "गाली", "gaali", "गंदा", "ganda", "ब्लडी फूल", "bloody fool"
             ],
             "ta": [
-                # Derogatory Tamil terms (to be replaced)
+                # Derogatory Tamil terms
                 "முட்டாள்", "muttaal", "பைத்தியம்", "paithiyam",
                 "கழுதை", "kazhudhai", "நாய்", "naai",
                 "பன்னி", "panni", "பண்ணி",
                 "loosu", "porukki", "kirukku"
             ],
             "te": [
-                # Derogatory Telugu terms (to be replaced)
+                # Derogatory Telugu terms
                 "మూర్ఖుడు", "moorkhhudu", "వెధవ", "vedava",
                 "గాడిదేడు", "gadidhedu", "గోవు", "govu",
                 "కుక్క", "kukka", "పంది", "pandi",
@@ -178,9 +177,16 @@ class SafetyFilter:
         }
     
     def _load_synonyms(self) -> Dict[str, Dict[str, str]]:
-        """Load appropriate synonym replacements for racial slurs and derogatory terms"""
+        """Load appropriate synonym replacements for all profane words"""
         return {
             "en": {
+                # Synonyms for highly abusive words
+                "fuck": "extremely bad", "fucking": "very", "shit": "nonsense",
+                "bitch": "difficult person", "asshole": "unpleasant person",
+                "bastard": "difficult person", "dickhead": "rude person",
+                "prick": "annoying person", "damn": "darn", "hell": "heck",
+                "crap": "nonsense", "ass": "fool", "dumbass": "misguided person",
+                # Synonyms for derogatory terms
                 "stupid": "unwise", "idiot": "inexperienced person",
                 "fool": "naive person", "dumb": "uninformed",
                 "moron": "confused person", "retard": "challenged person",
@@ -191,6 +197,15 @@ class SafetyFilter:
                 "pathetic": "unfortunate"
             },
             "hi": {
+                # Synonyms for highly abusive Hindi words
+                "चूतिया": "मूर्ख", "chutiya": "moorkhh",
+                "मादरचोद": "अत्यंत बुरा", "madarchod": "atyant bura",
+                "बहनचोद": "अत्यंत बुरा", "behenchod": "atyant bura",
+                "भोसडीके": "बुरा व्यक्ति", "bhosadike": "bura vyakti",
+                "रांड": "बुरी महिला", "randi": "buri mahila",
+                "चुतियापा": "बेकार काम", "chutiyapa": "bekaar kaam",
+                "बकचोद": "बकवास करने वाला", "bakchod": "bakwas karne wala",
+                # Synonyms for derogatory Hindi terms
                 "बेवकूफ़": "अनजान", "बेवकूफ": "अनजान",
                 "bewakoof": "anjaan", "bewakuf": "anjaan",
                 "मूर्ख": "अज्ञानी", "गधा": "नासमझ", "gadha": "nasamajh",
@@ -208,6 +223,14 @@ class SafetyFilter:
                 "ब्लडी फूल": "मूर्ख", "bloody fool": "moorkhh"
             },
             "ta": {
+                # Synonyms for highly abusive Tamil words
+                "புண்டா": "மோசமானவர்", "punda": "mosamaanavar",
+                "ஓத்தா": "மிக மோசம்", "otha": "miga mosam",
+                "ஓம்பு": "மிக மோசம்", "ombu": "miga mosam",
+                "தேவடியா": "கெட்டவர்", "thevidiya": "kettavar",
+                "குத்தி": "கெட்டவர்", "koothi": "kettavar",
+                "பூல்": "மோசம்", "pul": "mosam",
+                # Synonyms for derogatory Tamil terms
                 "முட்டாள்": "அறியாதவர்", "muttaal": "ariyathavar",
                 "பைத்தியம்": "குழப்பமானவர்", "paithiyam": "kuzhhappamanavar",
                 "கழுதை": "மூடனம்றவர்", "kazhudhai": "mudanamravar",
@@ -217,6 +240,14 @@ class SafetyFilter:
                 "kirukku": "pizhhaiyaanavar"
             },
             "te": {
+                # Synonyms for highly abusive Telugu words
+                "పూకు": "చెడ్డది", "pooku": "cheddadi",
+                "లండ": "చెడ్డది", "land": "cheddadi",
+                "బోడు": "చెడ్డ వ్యక్తి", "bodu": "chedda vyakthi",
+                "కూతురు": "చెడ్డది", "kothuru": "cheddadi",
+                "పూరి": "చెడ్డది", "poori": "cheddadi",
+                "lanjakoduku": "chedda vyakthi",
+                # Synonyms for derogatory Telugu terms
                 "మూర్ఖుడు": "తెలియని వ్యక్తి", "moorkhhudu": "teliyani vyakthi",
                 "వెధవ": "అనుభవం లేని వారు", "vedava": "anubhavam leni vaaru",
                 "గాడిదేడు": "మూర్ఖుడు", "gadidhedu": "moorkhhudu",
@@ -242,28 +273,31 @@ class SafetyFilter:
             return 'te'
         return 'en'
     
-    def filter(self, text: str) -> str:
+    def filter(self, text: str, use_synonyms: bool = True) -> str:
         """
         Filter profanity from text (simple interface).
-        Uses smart filtering: masks highly abusive words, replaces racial slurs.
         
         Args:
             text: Input text to filter
+            use_synonyms: Replace with synonyms if True, mask with * if False
         
         Returns:
             Cleaned text string
         """
-        result = self.filter_detailed(text)
+        result = self.filter_detailed(text, use_synonyms)
         return result.cleaned_text
     
-    def filter_detailed(self, text: str) -> FilterResult:
+    def filter_detailed(self, text: str, use_synonyms: bool = True) -> FilterResult:
         """
-        Filter profanity from text with smart categorization:
-        - Highly abusive words: MASKED (***)
-        - Racial slurs/derogatory: REPLACED with synonyms
+        Filter profanity from text.
+        
+        - If use_synonyms=True: replace with synonyms where available,
+          otherwise mask with *****.
+        - If use_synonyms=False: mask all profane words.
         
         Args:
             text: Input text to filter
+            use_synonyms: Replace with synonyms if True, mask if False
         
         Returns:
             FilterResult object with detailed information
@@ -274,43 +308,44 @@ class SafetyFilter:
         # Auto-detect language if enabled
         lang = self.detect_language(text) if self.auto_detect else self.language
         
-        # Find highly abusive words (to mask)
-        highly_abusive_found = []
-        lower = text.lower()
-        for word in self.highly_abusive.get(lang, []):
-            if word.lower() in lower:
-                highly_abusive_found.append(word)
+        # Union of all profane words for this language
+        all_words = set()
+        all_words.update(self.highly_abusive.get(lang, []))
+        all_words.update(self.racial_slurs.get(lang, []))
         
-        # Find racial slurs (to replace)
-        racial_slurs_found = []
-        for word in self.racial_slurs.get(lang, []):
+        found = []
+        lower = text.lower()
+        for word in all_words:
             if word.lower() in lower:
-                racial_slurs_found.append(word)
+                found.append(word)
         
         cleaned = text
         replacements = {}
         
-        # First, MASK highly abusive words
-        for word in highly_abusive_found:
-            masked = '*' * len(word)
-            cleaned = self._replace_word(cleaned, word, masked)
-            replacements[word] = masked
+        if use_synonyms:
+            # Prefer synonyms; fallback to masking if no synonym exists
+            for word in found:
+                rep = self._get_synonym(word, lang)
+                if rep == word:          # no synonym defined
+                    rep = '*' * len(word)
+                cleaned = self._replace_word(cleaned, word, rep)
+                replacements[word] = rep
+        else:
+            # Pure masking mode
+            if BETTER_PROFANITY_AVAILABLE:
+                cleaned = profanity.censor(text)
+            for word in found:
+                masked = '*' * len(word)
+                cleaned = self._replace_word(cleaned, word, masked)
+                replacements[word] = masked
         
-        # Then, REPLACE racial slurs with synonyms
-        for word in racial_slurs_found:
-            synonym = self._get_synonym(word, lang)
-            cleaned = self._replace_word(cleaned, word, synonym)
-            replacements[word] = synonym
-        
-        all_found = highly_abusive_found + racial_slurs_found
-        
-        return FilterResult(text, cleaned, list(set(all_found)), replacements, lang)
+        return FilterResult(text, cleaned, list(set(found)), replacements, lang)
     
     def _get_synonym(self, word: str, lang: str) -> str:
-        """Get appropriate synonym for a racial slur or derogatory term"""
+        """Get appropriate synonym if available; otherwise return original."""
         synonyms = self.synonyms.get(lang, {})
         rep = synonyms.get(word.lower()) or synonyms.get(word)
-        return rep if rep else word  # If no synonym, keep original
+        return rep if rep else word
     
     def _replace_word(self, text: str, word: str, replacement: str) -> str:
         """Replace word in text while preserving boundaries"""
@@ -320,24 +355,20 @@ class SafetyFilter:
 
 
 # Convenience function for quick filtering
-def filter_text(text: str, language: str = 'en') -> str:
+def filter_text(text: str, language: str = 'en', use_synonyms: bool = True) -> str:
     """
-    Quick profanity filter function with smart categorization.
+    Quick profanity filter function.
     
     Args:
         text: Text to filter
         language: Language code ('en', 'hi', 'ta', 'te')
+        use_synonyms: Replace with synonyms if True, mask if False
     
     Returns:
         Cleaned text
-    
-    Example:
-        >>> clean = filter_text("You stupid bastard!", language='en')
-        >>> print(clean)
-        'You unwise *******!'  # stupid→unwise, bastard→masked
     """
     filter = SafetyFilter(language=language)
-    return filter.filter(text)
+    return filter.filter(text, use_synonyms=use_synonyms)
 
 
 # Command-line interface
