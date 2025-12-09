@@ -1,8 +1,16 @@
 """
 Safety layer class for text profanity filtering.
 Uses better-profanity and simple synonym logic to mask/replace abusive words.
+
+Usage:
+    python safety_layer_text.py <input_file_path> <output_file_path>
+    
+Example:
+    python safety_layer_text.py p_text.txt output/cleaned.txt
 """
 
+import sys
+import os
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -15,6 +23,7 @@ class ProfanityFilterResult:
     cleaned_text: str
     profane_words: List[str]
     replacements: Dict[str, str]
+    detected_language: str
 
 
 class SafetyLayer:
@@ -39,9 +48,29 @@ class SafetyLayer:
         if language in self.custom_words:
             profanity.add_censor_words(self.custom_words[language])
 
+    def detect_language(self, text: str) -> str:
+        """
+        Simple language detection based on Unicode script ranges.
+        Returns 'en', 'hi', 'ta', or 'te'.
+        """
+        # Count characters from each script
+        devanagari = sum(1 for c in text if '\u0900' <= c <= '\u097F')  # Hindi
+        tamil = sum(1 for c in text if '\u0B80' <= c <= '\u0BFF')  # Tamil
+        telugu = sum(1 for c in text if '\u0C00' <= c <= '\u0C7F')  # Telugu
+        
+        # Return language with highest character count
+        if devanagari > 0:
+            return 'hi'
+        elif tamil > 0:
+            return 'ta'
+        elif telugu > 0:
+            return 'te'
+        else:
+            return 'en'  # Default to English
+
     def profanity_filter_text(self, text: str, use_synonyms: bool = True) -> ProfanityFilterResult:
         if not text:
-            return ProfanityFilterResult(text, text, [], {})
+            return ProfanityFilterResult(text, text, [], {}, self.language)
 
         found: List[str] = []
         lower = text.lower()
@@ -62,7 +91,7 @@ class SafetyLayer:
             for w in found:
                 replacements[w] = "*" * len(w)
 
-        return ProfanityFilterResult(text, cleaned, list(set(found)), replacements)
+        return ProfanityFilterResult(text, cleaned, list(set(found)), replacements, self.language)
 
     def _get_replacement(self, word: str) -> str:
         m = self.synonyms.get(self.language, {})
@@ -78,3 +107,76 @@ class SafetyLayer:
             return replacement
 
         return pattern.sub(_m, text)
+
+
+def main():
+    """
+    Command-line interface for safety_layer_text.
+    """
+    if len(sys.argv) != 3:
+        print("Usage: python safety_layer_text.py <input_file> <output_file>")
+        print("\nExample:")
+        print("  python safety_layer_text.py p_text.txt output/cleaned.txt")
+        sys.exit(1)
+    
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    
+    # Check if input file exists
+    if not os.path.exists(input_file):
+        print(f"Error: Input file '{input_file}' not found!")
+        sys.exit(1)
+    
+    # Read input text
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            text = f.read()
+    except Exception as e:
+        print(f"Error reading input file: {e}")
+        sys.exit(1)
+    
+    # Auto-detect language
+    temp_layer = SafetyLayer()
+    detected_lang = temp_layer.detect_language(text)
+    
+    # Initialize with detected language
+    safety = SafetyLayer(language=detected_lang)
+    
+    # Filter text
+    result = safety.profanity_filter_text(text, use_synonyms=True)
+    
+    # Create output directory if it doesn't exist
+    output_dir = os.path.dirname(output_file)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+    
+    # Write output
+    try:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(result.cleaned_text)
+    except Exception as e:
+        print(f"Error writing output file: {e}")
+        sys.exit(1)
+    
+    # Print summary
+    print("=" * 70)
+    print("PROFANITY FILTER - PROCESSING COMPLETE")
+    print("=" * 70)
+    print(f"Input file:        {input_file}")
+    print(f"Output file:       {output_file}")
+    print(f"Detected language: {detected_lang.upper()}")
+    print(f"Profane words:     {len(result.profane_words)}")
+    if result.profane_words:
+        print(f"Words replaced:    {', '.join(result.profane_words)}")
+        print(f"\nReplacements made:")
+        for word, replacement in result.replacements.items():
+            print(f"  '{word}' → '{replacement}'")
+    else:
+        print("No profanity detected.")
+    print("=" * 70)
+    print(f"✅ Cleaned text saved to '{output_file}'")
+    print("=" * 70)
+
+
+if __name__ == "__main__":
+    main()
