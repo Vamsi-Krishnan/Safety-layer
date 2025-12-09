@@ -31,18 +31,134 @@ class SafetyLayer:
         self.language = language
         profanity.load_censor_words()
 
-        # Minimal demo dictionaries; expand later
+        # Expanded dictionaries with comprehensive profanity words
         self.custom_words: Dict[str, List[str]] = {
-            "en": ["stupid", "idiot"],
-            "hi": ["बेवकूफ", "मूर्ख", "bewakoof"],
-            "ta": ["முட்டாள்", "loosu"],
-            "te": ["మూర్ఖుడు", "vedava"],
+            "en": [
+                # Common profanity
+                "stupid", "idiot", "fool", "dumb", "moron", "dumbass", "ass",
+                "bastard", "bitch", "damn", "hell", "crap", "shit", "fuck",
+                "fucking", "asshole", "dickhead", "prick", "cock", "pussy",
+                "retard", "retarded", "imbecile", "jerk", "loser", "scum",
+                "trash", "garbage", "worthless", "pathetic"
+            ],
+            "hi": [
+                # Devanagari script
+                "बेवकूफ़", "बेवकूफ", "मूर्ख", "गधा", "उल्लू", "ब्लडी फूल",
+                "चूतिया", "हरामी", "हरामज़ादा", "कमीना", "कमीने", "कुत्ता", "कुत्ते",
+                "मादरचोद", "बहनचोद", "भोसडीके", "लौडा", "लंड",
+                "गांडू", "झाटू", "भोसडा", "रांड", "सुअर",
+                "चुतियापा", "बकवास", "बकचोद", "गाली", "गंदा",
+                # Romanized/Hinglish
+                "bewakoof", "bewakuf", "gadha", "ullu", "bloody fool",
+                "chutiya", "harami", "haramzada", "kamina", "kamine",
+                "kutta", "kutte", "madarchod", "behenchod", "bhosadike",
+                "lauda", "lund", "gandu", "jhatu", "bhosda", "randi",
+                "suar", "chutiyapa", "bakwas", "bakchod", "gaali", "ganda"
+            ],
+            "ta": [
+                # Tamil script
+                "முட்டாள்", "பைத்தியம்", "கழுதை", "நாய்",
+                "புண்டா", "ஓத்தா", "ஓம்பு", "தேவடியா",
+                "குத்தி", "பன்னி", "பூல்", "பண்ணி",
+                # Romanized Tamil
+                "muttaal", "paithiyam", "kazhudhai", "naai", "punda",
+                "otha", "ombu", "thevidiya", "koothi", "panni", "pul", "panni",
+                "loosu", "porukki", "kirukku"
+            ],
+            "te": [
+                # Telugu script
+                "మూర్ఖుడు", "వెధవ", "గాడిదేడు", "గోవు",
+                "కుక్క", "పంది", "పూకు", "ద్రోహి",
+                "లండ", "బోడు", "కూతురు", "పూరి",
+                # Romanized Telugu
+                "moorkhhudu", "vedava", "gadidhedu", "govu", "kukka",
+                "pandi", "pooku", "drohi", "land", "bodu", "kothuru", "poori",
+                "gadu", "lanjakoduku"
+            ]
         }
+        
         self.synonyms: Dict[str, Dict[str, str]] = {
-            "en": {"stupid": "unwise", "idiot": "inexperienced person"},
-            "hi": {"बेवकूफ": "अनजान", "bewakoof": "anjaan"},
-            "ta": {"முட்டாள்": "அறியாதவர்", "loosu": "theriyadhavar"},
-            "te": {"మూర్ఖుడు": "తెలియని వ్యక్తి", "vedava": "అనుభవం లేని వారు"},
+            "en": {
+                # Milder/appropriate replacements
+                "stupid": "unwise",
+                "idiot": "inexperienced person",
+                "fool": "naive person",
+                "dumb": "uninformed",
+                "moron": "confused person",
+                "dumbass": "misguided individual",
+                "bastard": "difficult person",
+                "damn": "darn",
+                "hell": "heck",
+                "crap": "nonsense",
+                "jerk": "rude person",
+                "loser": "unsuccessful person",
+                "scum": "unpleasant person",
+                "trash": "worthless",
+                "garbage": "poor quality",
+                "pathetic": "unfortunate"
+            },
+            "hi": {
+                # Devanagari replacements
+                "बेवकूफ़": "अनजान",
+                "बेवकूफ": "अनजान",
+                "मूर्ख": "अज्ञानी",
+                "गधा": "नासमझ",
+                "उल्लू": "भोला",
+                "ब्लडी फूल": "मूर्ख",
+                "कमीना": "बुरा व्यक्ति",
+                "कमीने": "बुरे लोग",
+                "कुत्ता": "नीच व्यक्ति",
+                "कुत्ते": "नीच लोग",
+                "बकवास": "बेकार बात",
+                "गाली": "अपमानजनक शब्द",
+                "गंदा": "अशुभ",
+                # Romanized replacements
+                "bewakoof": "anjaan",
+                "bewakuf": "anjaan",
+                "gadha": "nasamajh",
+                "ullu": "bhola",
+                "bloody fool": "moorkhh",
+                "kamina": "bura vyakti",
+                "kamine": "bure log",
+                "kutta": "neech vyakti",
+                "kutte": "neech log",
+                "bakwas": "bekaar baat",
+                "gaali": "apmaanjanak shabd",
+                "ganda": "ashubh"
+            },
+            "ta": {
+                # Tamil replacements
+                "முட்டாள்": "அறியாதவர்",
+                "பைத்தியம்": "குழப்பமானவர்",
+                "கழுதை": "மூடனம்றவர்",
+                "நாய்": "தீயவர்",
+                "குத்தி": "தீயவர்",
+                "muttaal": "ariyathavar",
+                "paithiyam": "kuzhhappamanavar",
+                "kazhudhai": "mudanamravar",
+                "naai": "theeyavar",
+                "loosu": "theriyadhavar",
+                "porukki": "kettavar",
+                "kirukku": "pizhhaiyaanavar"
+            },
+            "te": {
+                # Telugu replacements
+                "మూర్ఖుడు": "తెలియని వ్యక్తి",
+                "వెధవ": "అనుభవం లేని వారు",
+                "గాడిదేడు": "మూర్ఖుడు",
+                "గోవు": "మూఢనంమైన వ్యక్తి",
+                "కుక్క": "తప్పుడు వ్యక్తి",
+                "పంది": "మూఢనంమైన వ్యక్తి",
+                "ద్రోహి": "తప్పు మనసు ఉన్న వ్యక్తి",
+                "moorkhhudu": "teliyani vyakthi",
+                "vedava": "anubhavam leni vaaru",
+                "gadidhedu": "moorkhhudu",
+                "govu": "mudanamaina vyakthi",
+                "kukka": "thappudu vyakthi",
+                "pandi": "mudanamaina vyakthi",
+                "drohi": "thappu manasu unna vyakthi",
+                "gadu": "chedda vyakthi"
+            }
         }
 
         if language in self.custom_words:
