@@ -148,10 +148,14 @@ def main():
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
     
-    # Write output
+    # Write output - ADD EXPLICIT FLUSH
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(result.cleaned_text)
+            f.flush()  # Force write to disk
+        # Verify file was written
+        if os.path.exists(output_file):
+            print(f"Done: {output_file}")
     except Exception as e:
         print(f"Error writing output file: {e}")
         sys.exit(1)
