@@ -115,8 +115,6 @@ def main():
     """
     if len(sys.argv) != 3:
         print("Usage: python safety_layer_text.py <input_file> <output_file>")
-        print("\nExample:")
-        print("  python safety_layer_text.py p_text.txt output/cleaned.txt")
         sys.exit(1)
     
     input_file = sys.argv[1]
@@ -157,25 +155,6 @@ def main():
     except Exception as e:
         print(f"Error writing output file: {e}")
         sys.exit(1)
-    
-    # Print summary
-    print("=" * 70)
-    print("PROFANITY FILTER - PROCESSING COMPLETE")
-    print("=" * 70)
-    print(f"Input file:        {input_file}")
-    print(f"Output file:       {output_file}")
-    print(f"Detected language: {detected_lang.upper()}")
-    print(f"Profane words:     {len(result.profane_words)}")
-    if result.profane_words:
-        print(f"Words replaced:    {', '.join(result.profane_words)}")
-        print(f"\nReplacements made:")
-        for word, replacement in result.replacements.items():
-            print(f"  '{word}' → '{replacement}'")
-    else:
-        print("No profanity detected.")
-    print("=" * 70)
-    print(f"✅ Cleaned text saved to '{output_file}'")
-    print("=" * 70)
 
 
 if __name__ == "__main__":
